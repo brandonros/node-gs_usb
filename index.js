@@ -27,9 +27,7 @@ const sendHostConfig = (device) => {
   const bRequest = GS_USB_BREQ_HOST_FORMAT
   const wValue = 1
   const wIndex = device.interfaces[0].descriptor.bInterfaceNumber
-  const le = [0x00, 0x00, 0xBE, 0xEF] // TODO: not sure which to do, does not seem to really make a difference
-  const be = [0xEF, 0xBE, 0x00, 0x00]
-  const data = Buffer.from(be)
+  const data = Buffer.from([0x00, 0x00, 0xBE, 0xEF])
   return new Promise((resolve, reject) => {
     device.controlTransfer(
       bmRequestType,
@@ -93,16 +91,9 @@ const startDevice = (device) => {
   const bRequest = GS_USB_BREQ_MODE
   const wValue = 0
   const wIndex = device.interfaces[0].descriptor.bInterfaceNumber
-  const data = Buffer.from([
-    0x01, // mode
-    0x00, // mode
-    0x00, // mode
-    0x00, // mode
-    0x00, // flags
-    0x00, // flags
-    0x00, // flags
-    0x00, // flags
-  ])
+  const data = Buffer.alloc(8)
+  data.writeUInt32LE(0x00000001, 0) // mode
+  data.writeUInt32LE(0x00000000, 4) // flags
   return new Promise((resolve, reject) => {
     device.controlTransfer(
       bmRequestType,
@@ -124,16 +115,9 @@ const resetDevice = (device) => {
   const bRequest = GS_USB_BREQ_MODE
   const wValue = 0
   const wIndex = device.interfaces[0].descriptor.bInterfaceNumber
-  const data = Buffer.from([
-    0x00, // mode
-    0x00, // mode
-    0x00, // mode
-    0x00, // mode
-    0x00, // flags
-    0x00, // flags
-    0x00, // flags
-    0x00, // flags
-  ])
+  const data = Buffer.alloc(8)
+  data.writeUInt32LE(0x00000001, 0) // mode
+  data.writeUInt32LE(0x00000000, 4) // flags
   return new Promise((resolve, reject) => {
     device.controlTransfer(
       bmRequestType,
@@ -161,9 +145,10 @@ const transferFrame = (outEndpoint, frame) => {
   })
 }
 
-const setupDevice = async () => {
+const setupDevice = async (vendorId, productId) => {
   //usb.setDebugLevel(4)
-  const device = usb.getDeviceList().find(device => device.deviceDescriptor.idProduct === 0x606f && device.deviceDescriptor.idVendor === 0x1d50)
+  const device = usb.getDeviceList().find(device => device.deviceDescriptor.idProduct === productId && 
+      device.deviceDescriptor.idVendor === vendorId)
   if (!device) {
     throw new Error('Device not found')
   }
@@ -176,7 +161,7 @@ const setupDevice = async () => {
   await startDevice(device)
   inEndpoint = device.interfaces[0].endpoints.find(endpoint => endpoint.constructor.name === 'InEndpoint')
   outEndpoint = device.interfaces[0].endpoints.find(endpoint => endpoint.constructor.name === 'OutEndpoint')
-  inEndpoint.on('data', async (frame) => {
+  inEndpoint.on('data', (frame) => {
     const arbId = frame.readUInt16LE(4)
     const payload = frame.slice(12)
     emitter.emit('frame', {
@@ -199,7 +184,6 @@ module.exports = {
     idBuffer.writeUInt16LE(id, 0)
     const frame = Buffer.from(`ffffffff${idBuffer.toString('hex')}000008000000${data.toString('hex')}`, 'hex')
     await transferFrame(outEndpoint, frame)
-    return 16
   },
   addListener: (name, cb) => {
     emitter.on('frame', cb)
