@@ -1,5 +1,6 @@
 const usb = require('usb')
 const EventEmitter = require('events')
+const util = require('util')
 
 const GS_USB_BREQ_HOST_FORMAT = 0
 const GS_USB_BREQ_BITTIMING = 1
@@ -22,26 +23,20 @@ let inEndpoint = null
 let outEndpoint = null
 const emitter = new EventEmitter()
 
+
 const sendHostConfig = (device) => {
   const bmRequestType =  USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
   const bRequest = GS_USB_BREQ_HOST_FORMAT
   const wValue = 1
   const wIndex = device.interfaces[0].descriptor.bInterfaceNumber
   const data = Buffer.from([0x00, 0x00, 0xBE, 0xEF])
-  return new Promise((resolve, reject) => {
-    device.controlTransfer(
-      bmRequestType,
-      bRequest,
-      wValue,
-      wIndex,
-      data,
-      (err) => {
-        if (err) {
-          return reject(err)
-        }
-        resolve()
-      })
-  })
+  return device.controlTransfer(
+    bmRequestType,
+    bRequest,
+    wValue,
+    wIndex,
+    data
+  )
 }
 
 const readDeviceConfig = (device) => {
@@ -49,20 +44,13 @@ const readDeviceConfig = (device) => {
   const bRequest = GS_USB_BREQ_DEVICE_CONFIG
   const wValue = 1
   const wIndex = device.interfaces[0].descriptor.bInterfaceNumber
-  return new Promise((resolve, reject) => {
-    device.controlTransfer(
-      bmRequestType,
-      bRequest,
-      wValue,
-      wIndex,
-      12,
-      (err, data) => {
-        if (err) {
-          return reject(err)
-        }
-        resolve(data)
-      })
-  })
+  return device.controlTransfer(
+    bmRequestType,
+    bRequest,
+    wValue,
+    wIndex,
+    0x0C
+  )
 }
 
 const fetchBitTimingConstants = (device) => {
@@ -70,20 +58,13 @@ const fetchBitTimingConstants = (device) => {
   const bRequest = GS_USB_BREQ_BT_CONST
   const wValue = 0
   const wIndex = device.interfaces[0].descriptor.bInterfaceNumber
-  return new Promise((resolve, reject) => {
-    device.controlTransfer(
-      bmRequestType,
-      bRequest,
-      wValue,
-      wIndex,
-      0x28,
-      (err, data) => {
-        if (err) {
-          return reject(err)
-        }
-        resolve(data)
-      })
-  })
+  return device.controlTransfer(
+    bmRequestType,
+    bRequest,
+    wValue,
+    wIndex,
+    0x28
+  )
 }
 
 const startDevice = (device) => {
@@ -94,20 +75,13 @@ const startDevice = (device) => {
   const data = Buffer.alloc(8)
   data.writeUInt32LE(0x00000001, 0) // mode
   data.writeUInt32LE(0x00000000, 4) // flags
-  return new Promise((resolve, reject) => {
-    device.controlTransfer(
-      bmRequestType,
-      bRequest,
-      wValue,
-      wIndex,
-      data,
-      (err) => {
-        if (err) {
-          return reject(err)
-        }
-        resolve()
-      })
-  })
+  return device.controlTransfer(
+    bmRequestType,
+    bRequest,
+    wValue,
+    wIndex,
+    data
+  )
 }
 
 const resetDevice = (device) => {
@@ -118,20 +92,13 @@ const resetDevice = (device) => {
   const data = Buffer.alloc(8)
   data.writeUInt32LE(0x00000001, 0) // mode
   data.writeUInt32LE(0x00000000, 4) // flags
-  return new Promise((resolve, reject) => {
-    device.controlTransfer(
-      bmRequestType,
-      bRequest,
-      wValue,
-      wIndex,
-      data,
-      (err) => {
-        if (err) {
-          return reject(err)
-        }
-        resolve()
-      })
-  })
+  return device.controlTransfer(
+    bmRequestType,
+    bRequest,
+    wValue,
+    wIndex,
+    data
+  )
 }
 
 const transferFrame = (outEndpoint, frame) => {
@@ -148,13 +115,14 @@ const transferFrame = (outEndpoint, frame) => {
 const setupDevice = async (vendorId, productId) => {
   //usb.setDebugLevel(4)
   const deviceList = usb.getDeviceList()
-  const device = deviceList.find(device => device.deviceDescriptor.idProduct === productId && 
+  const device = deviceList.find(device => device.deviceDescriptor.idProduct === productId &&
       device.deviceDescriptor.idVendor === vendorId)
   if (!device) {
     throw new Error('Device not found')
   }
   device.open()
   device.interfaces[0].claim()
+  device.controlTransfer = util.promisify(device.controlTransfer)
   await resetDevice(device)
   await sendHostConfig(device)
   const deviceConfig = await readDeviceConfig(device)
