@@ -35,11 +35,11 @@ const sendHostConfig = (device) => {
       wValue,
       wIndex,
       data,
-      (err, data) => {
+      (err) => {
         if (err) {
           return reject(err)
         }
-        resolve(data)
+        resolve()
       })
   })
 }
@@ -101,11 +101,11 @@ const startDevice = (device) => {
       wValue,
       wIndex,
       data,
-      (err, data) => {
+      (err) => {
         if (err) {
           return reject(err)
         }
-        resolve(data)
+        resolve()
       })
   })
 }
@@ -125,11 +125,11 @@ const resetDevice = (device) => {
       wValue,
       wIndex,
       data,
-      (err, data) => {
+      (err) => {
         if (err) {
           return reject(err)
         }
-        resolve(data)
+        resolve()
       })
   })
 }
@@ -147,7 +147,8 @@ const transferFrame = (outEndpoint, frame) => {
 
 const setupDevice = async (vendorId, productId) => {
   //usb.setDebugLevel(4)
-  const device = usb.getDeviceList().find(device => device.deviceDescriptor.idProduct === productId && 
+  const deviceList = usb.getDeviceList()
+  const device = deviceList.find(device => device.deviceDescriptor.idProduct === productId && 
       device.deviceDescriptor.idVendor === vendorId)
   if (!device) {
     throw new Error('Device not found')
@@ -179,16 +180,16 @@ const setupDevice = async (vendorId, productId) => {
 }
 
 module.exports = {
-  send: async ({ id, data }) => {
+  send: ({ id, data }) => {
     const idBuffer = Buffer.alloc(2)
     idBuffer.writeUInt16LE(id, 0)
     const frame = Buffer.from(`ffffffff${idBuffer.toString('hex')}000008000000${data.toString('hex')}`, 'hex')
-    await transferFrame(outEndpoint, frame)
+    return transferFrame(outEndpoint, frame)
   },
   addListener: (name, cb) => {
     emitter.on('frame', cb)
   },
-  start: async () => {
-    await setupDevice()
+  start: () => {
+    return setupDevice()
   }
 }
