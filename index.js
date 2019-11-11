@@ -1,6 +1,7 @@
 const usb = require('usb')
 const EventEmitter = require('events')
 const util = require('util')
+const debug = require('debug')('node-gs_usb')
 
 const GS_USB_BREQ_HOST_FORMAT = 0
 const GS_USB_BREQ_BITTIMING = 1
@@ -23,8 +24,8 @@ let inEndpoint = null
 let outEndpoint = null
 const emitter = new EventEmitter()
 
-
 const sendHostConfig = (device) => {
+  debug('sendHostConfig')
   const bmRequestType =  USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
   const bRequest = GS_USB_BREQ_HOST_FORMAT
   const wValue = 1
@@ -40,6 +41,7 @@ const sendHostConfig = (device) => {
 }
 
 const readDeviceConfig = (device) => {
+  debug('readDeviceConfig')
   const bmRequestType =  USB_DIR_IN | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
   const bRequest = GS_USB_BREQ_DEVICE_CONFIG
   const wValue = 1
@@ -54,6 +56,7 @@ const readDeviceConfig = (device) => {
 }
 
 const fetchBitTimingConstants = (device) => {
+  debug('fetchBitTimingConstants')
   const bmRequestType =  USB_DIR_IN | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
   const bRequest = GS_USB_BREQ_BT_CONST
   const wValue = 0
@@ -68,6 +71,7 @@ const fetchBitTimingConstants = (device) => {
 }
 
 const startDevice = (device) => {
+  debug('startDevice')
   const bmRequestType =  USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
   const bRequest = GS_USB_BREQ_MODE
   const wValue = 0
@@ -85,12 +89,13 @@ const startDevice = (device) => {
 }
 
 const resetDevice = (device) => {
+  debug('resetDevice')
   const bmRequestType =  USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
   const bRequest = GS_USB_BREQ_MODE
   const wValue = 0
   const wIndex = device.interfaces[0].descriptor.bInterfaceNumber
   const data = Buffer.alloc(8)
-  data.writeUInt32LE(0x00000001, 0) // mode
+  data.writeUInt32LE(0x00000000, 0) // mode
   data.writeUInt32LE(0x00000000, 4) // flags
   return device.controlTransfer(
     bmRequestType,
@@ -102,6 +107,7 @@ const resetDevice = (device) => {
 }
 
 const transferFrame = (outEndpoint, frame) => {
+  debug('transferFrame')
   return new Promise((resolve, reject) => {
     outEndpoint.transfer(frame, (err) => {
       if (err) {
@@ -157,7 +163,7 @@ module.exports = {
   addListener: (name, cb) => {
     emitter.on('frame', cb)
   },
-  start: () => {
-    return setupDevice()
+  start: (vendorId, productId) => {
+    return setupDevice(vendorId, productId)
   }
 }
