@@ -30,6 +30,8 @@ const USB_DIR_IN = 0x80
 const USB_TYPE_VENDOR = (0x02 << 5)
 const USB_RECIP_INTERFACE = 0x01
 
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+
 const resetDevice = async (device) => {
   const bmRequestType =  USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
   const bRequest = GS_USB_BREQ_MODE
@@ -117,18 +119,19 @@ const buf2hex = (buffer) => { // buffer is an ArrayBuffer
   return Array.prototype.map.call(new Uint8Array(buffer), x => ('00' + x.toString(16)).slice(-2)).join('');
 }
 
-const readLoop = async (device) => {
+const messages = new Set()
+
+const readLoop = async (device, cb) => {
   const endpointNumber = 0x01 // in
-  const length = 0xFF
+  const length = 0x14
   const result = await device.transferIn(endpointNumber, length)
-  console.log(`< ${buf2hex(result.data.buffer)}`)
-  readLoop(device)
+  cb(result)
+  await delay(16)
+  return readLoop(device, cb)
 }
 
-const send = async (device) => {
+const send = async (device, arbitrationId, message) => {
   const endpointNumber = 0x02 // out
-  const arbitrationId = 0x7E5
-  const message = [0x02, 0x3E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
   const data = new ArrayBuffer(0x14)
   const dataView = new DataView(data)
   dataView.setUint32(0x00, 0xffffffff, true)
@@ -143,7 +146,8 @@ const send = async (device) => {
   dataView.setUint8(0x11, message[5])
   dataView.setUint8(0x12, message[6])
   dataView.setUint8(0x13, message[7])
-  console.log(`> ${buf2hex(data)}`)
+  const frame = buf2hex(data).slice(24)
+  console.log(`> ${frame}`)
   return device.transferOut(endpointNumber, data)
 }
 
@@ -160,8 +164,6 @@ const init = async (deviceName) => {
     await device.selectConfiguration(configuration.configurationValue)
     await device.claimInterface(interface.interfaceNumber)
 
-    console.log(interface)
-
     await resetDevice(device)
     await sendHostConfig(device)
     const deviceConfig = await readDeviceConfig(device)
@@ -169,10 +171,27 @@ const init = async (deviceName) => {
     await startDevice(device)
 
     document.querySelector('#send').addEventListener('click', () => {
-      send(device)
+      const sourceArbitrationId = 0x7E5 // CPC
+      const destinationArbitrationId = 0x7ED // CPC
+      const testerPresent = [0x02, 0x3E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+      const readSoftwareNumber = [0x03, 0x22, 0xF1, 0x21, 0x00, 0x00, 0x00, 0x00]
+      const readPartNumber = [0x03, 0x22, 0xF1, 0x11, 0x00, 0x00, 0x00, 0x00]
+      const startDiagnosticSession = [0x02, 0x10, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00]
+      const continuationFrame = [0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+      send(device, sourceArbitrationId, startDiagnosticSession)
+      send(device, sourceArbitrationId, readSoftwareNumber)
+      setTimeout(() => {
+        send(device, sourceArbitrationId, continuationFrame)
+      }, 100)
     })
 
-    readLoop(device)
+    readLoop(device, (result) => {
+      const arbitrationId = result.data.getUint16(4, true)
+      if (arbitrationId === 0x7ed) {
+        const frame = buf2hex(result.data.buffer).slice(24)
+        console.log(`< ${frame}`)
+      }
+    })
   } catch (err) {
     alert(err)
   }
