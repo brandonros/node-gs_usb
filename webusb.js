@@ -203,10 +203,17 @@ const init = async (deviceName) => {
       }*/
     })
 
+    const silencedArbitrationIds = new Set([
+      '02f'
+    ])
+
     readLoop(device, (result) => {
-      const arbitrationId = result.data.getUint16(4, true)
+      const arbitrationId = result.data.getUint16(4, true).toString(16).padStart(3, '0')
+      if (silencedArbitrationIds.has(arbitrationId)) {
+        return
+      }
       const frame = buf2hex(result.data.buffer).slice(24)
-      console.log(`${arbitrationId.toString(16)} > ${frame}`)
+      console.log(`${arbitrationId} > ${frame}`)
       /*const arbitrationId = result.data.getUint16(4, true)
       if (arbitrationId !== 0x4c && arbitrationId !== 0x0c) {
         const frame = buf2hex(result.data.buffer).slice(24)
