@@ -130,6 +130,8 @@ const readLoop = async (device, cb) => {
   return readLoop(device, cb)
 }
 
+let lastSentId = ''
+
 const send = async (device, arbitrationId, message) => {
   const endpointNumber = 0x02 // out
   const data = new ArrayBuffer(0x14)
@@ -147,7 +149,8 @@ const send = async (device, arbitrationId, message) => {
   dataView.setUint8(0x12, message[6])
   dataView.setUint8(0x13, message[7])
   const frame = buf2hex(data).slice(24)
-  console.log(`> ${frame}`)
+  console.log(`< ${frame}`)
+  lastSentId = arbitrationId.toString(16)
   return device.transferOut(endpointNumber, data)
 }
 
@@ -170,27 +173,49 @@ const init = async (deviceName) => {
     const bitTimingConstants = await fetchBitTimingConstants(device)
     await startDevice(device)
 
-    document.querySelector('#send').addEventListener('click', () => {
+    document.querySelector('#send').addEventListener('click', async () => {
       const sourceArbitrationId = 0x7E5 // CPC
       const destinationArbitrationId = 0x7ED // CPC
+      const ccpConnect = [0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00]
       const testerPresent = [0x02, 0x3E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+      const readMemoryByAddress = [0x06, 0x23, 0x00, 0x00, 0x00, 0x00, 0x01]
       const readSoftwareNumber = [0x03, 0x22, 0xF1, 0x21, 0x00, 0x00, 0x00, 0x00]
       const readPartNumber = [0x03, 0x22, 0xF1, 0x11, 0x00, 0x00, 0x00, 0x00]
-      const startDiagnosticSession = [0x02, 0x10, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00]
+      const readVin = [0x03, 0x22, 0xF1, 0x90, 0x00, 0x00, 0x00, 0x00]
+      const startDiagnosticSession02 = [0x02, 0x10, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00]
+      const startDiagnosticSession03 = [0x02, 0x10, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00]
       const continuationFrame = [0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
-      send(device, sourceArbitrationId, startDiagnosticSession)
-      send(device, sourceArbitrationId, readSoftwareNumber)
-      setTimeout(() => {
-        send(device, sourceArbitrationId, continuationFrame)
-      }, 100)
+      const reset = [0x02, 0x11, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00]
+      const requestSeed11 = [0x02, 0x27, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00]
+
+      /*for (let i = 0x0000; i < 0x07FF; ++i) {
+        await send(device, i, ccpConnect)
+        await delay(50)
+      }*/
+      /*await send(device, sourceArbitrationId, reset)
+      await delay(1000)
+      send(device, sourceArbitrationId, startDiagnosticSession03)
+      await delay(100)
+      for (let i = 0; i <= 0xFF; ++i) {
+        const readDid = [0x03, 0x22, 0xF1, i, 0x00, 0x00, 0x00, 0x00]
+        send(device, sourceArbitrationId, readDid)
+        await delay(666)
+      }*/
     })
 
     readLoop(device, (result) => {
       const arbitrationId = result.data.getUint16(4, true)
-      if (arbitrationId === 0x7ed) {
+      const frame = buf2hex(result.data.buffer).slice(24)
+      console.log(`${arbitrationId.toString(16)} > ${frame}`)
+      /*const arbitrationId = result.data.getUint16(4, true)
+      if (arbitrationId !== 0x4c && arbitrationId !== 0x0c) {
         const frame = buf2hex(result.data.buffer).slice(24)
-        console.log(`< ${frame}`)
-      }
+        console.log(`${lastSentId} ${arbitrationId.toString(16)} > ${frame}`)
+      }*/
+      //if (arbitrationId === 0x7ed) {
+        //const frame = buf2hex(result.data.buffer).slice(24)
+        //console.log(`${arbitrationId.toString(16)} > ${frame}`)
+      //}
     })
   } catch (err) {
     alert(err)
