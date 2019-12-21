@@ -188,43 +188,24 @@ const init = async (deviceName) => {
       const reset = [0x02, 0x11, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00]
       const requestSeed11 = [0x02, 0x27, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00]
 
-      /*for (let i = 0x0000; i < 0x07FF; ++i) {
-        await send(device, i, ccpConnect)
-        await delay(50)
-      }*/
-      /*await send(device, sourceArbitrationId, reset)
-      await delay(1000)
-      send(device, sourceArbitrationId, startDiagnosticSession03)
-      await delay(100)
-      for (let i = 0; i <= 0xFF; ++i) {
-        const readDid = [0x03, 0x22, 0xF1, i, 0x00, 0x00, 0x00, 0x00]
-        send(device, sourceArbitrationId, readDid)
-        await delay(666)
-      }*/
+      //await send(device, sourceArbitrationId, reset)
     })
 
-    const uniqueValuesMap = {}
+    const uniqueValues = new Set()
+    const counterMap = {}
 
     readLoop(device, (result) => {
       const arbitrationId = result.data.getUint16(4, true).toString(16).padStart(3, '0')
       const frame = buf2hex(result.data.buffer).slice(24)
-      if (!uniqueValuesMap[arbitrationId]) {
-        uniqueValuesMap[arbitrationId] = new Set()
+      const messageKey = `${arbitrationId}:${frame}`
+      if (!counterMap[messageKey]) {
+        counterMap[messageKey] = 0
       }
-      if (uniqueValuesMap[arbitrationId].has(frame)) {
-        return
+      counterMap[messageKey] += 1
+      if (!uniqueValues.has(messageKey)) {
+        uniqueValues.add(messageKey)
+        console.log(`${Math.floor(Date.now() / 1000)} ${arbitrationId} > ${frame} ${counterMap[messageKey]}x`)
       }
-      uniqueValuesMap[arbitrationId].add(frame)
-      console.log(`${arbitrationId} > ${frame}`)
-      /*const arbitrationId = result.data.getUint16(4, true)
-      if (arbitrationId !== 0x4c && arbitrationId !== 0x0c) {
-        const frame = buf2hex(result.data.buffer).slice(24)
-        console.log(`${lastSentId} ${arbitrationId.toString(16)} > ${frame}`)
-      }*/
-      //if (arbitrationId === 0x7ed) {
-        //const frame = buf2hex(result.data.buffer).slice(24)
-        //console.log(`${arbitrationId.toString(16)} > ${frame}`)
-      //}
     })
   } catch (err) {
     alert(err)
