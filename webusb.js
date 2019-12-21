@@ -205,6 +205,7 @@ const init = async (deviceName) => {
 
     const silencedArbitrationIds = new Set([
       '020',
+      '02f',
       '03d',
       '068',
       '071',
@@ -279,8 +280,12 @@ const init = async (deviceName) => {
       '3c4',
       '3c6',
       '3ce',
+      '3db',
       '3e7',
       '3e8',
+      '3ed',
+      '3ef',
+      '3f1',
       '3f3',
       '401',
       '407',
@@ -292,6 +297,7 @@ const init = async (deviceName) => {
       '48a',
       '490',
       '49b',
+      '49e',
       '4a6',
       '4a8',
       '4aa',
