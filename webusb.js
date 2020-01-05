@@ -13,6 +13,32 @@ const devices = {
   }
 }
 
+const arbitrationIdPairs = {
+  cpc: {
+    source: 0x7E5,
+    destination: 0x7ED
+  },
+  tcu: {
+    source: 0x749,
+    destination: 0x729
+  },
+  suspension: {
+    source: 0x744,
+    destination: 0x724
+  },
+  ecu: {
+    source: 0x7E0,
+    destination: 0x7E8
+  }
+}
+
+const messages = {
+  readSoftwareNumber: [0x03, 0x22, 0xF1, 0x21, 0x00, 0x00, 0x00, 0x00],
+  readPartNumber: [0x03, 0x22, 0xF1, 0x11, 0x00, 0x00, 0x00, 0x00],
+  readVin: [0x03, 0x22, 0xF1, 0x90, 0x00, 0x00, 0x00, 0x00],
+  continuationFrame: [0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+}
+
 const GS_USB_BREQ_HOST_FORMAT = 0
 const GS_USB_BREQ_BITTIMING = 1
 const GS_USB_BREQ_MODE = 2
@@ -31,6 +57,15 @@ const USB_TYPE_VENDOR = (0x02 << 5)
 const USB_RECIP_INTERFACE = 0x01
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+
+const uuid = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0
+    const v = c == 'x' ? r : (r & 0x3 | 0x8)
+    return v.toString(16)
+  })
+}
+
 
 const resetDevice = async (device) => {
   const bmRequestType =  USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
@@ -116,10 +151,8 @@ const startDevice = async (device) => {
 }
 
 const buf2hex = (buffer) => { // buffer is an ArrayBuffer
-  return Array.prototype.map.call(new Uint8Array(buffer), x => ('00' + x.toString(16)).slice(-2)).join('');
+  return Array.prototype.map.call(new Uint8Array(buffer), x => ('00' + x.toString(16)).slice(-2)).join('')
 }
-
-const messages = new Set()
 
 const readLoop = async (device, cb) => {
   const endpointNumber = 0x01 // in
@@ -154,69 +187,61 @@ const send = async (device, arbitrationId, message) => {
   return device.transferOut(endpointNumber, data)
 }
 
+const initDevice = (deviceName) => {
+  const device = await navigator.usb.requestDevice({
+    filters: [
+      devices[deviceName]
+    ]
+  })
+  await device.open()
+  const [ configuration ] = device.configurations
+  const [ interface ] = configuration.interfaces
+  await device.selectConfiguration(configuration.configurationValue)
+  await device.claimInterface(interface.interfaceNumber)
+  await resetDevice(device)
+  await sendHostConfig(device)
+  const deviceConfig = await readDeviceConfig(device)
+  const bitTimingConstants = await fetchBitTimingConstants(device)
+  await startDevice(device)
+  return device
+}
+
 const init = async (deviceName) => {
   try {
-    const device = await navigator.usb.requestDevice({
-      filters: [
-        devices[deviceName]
-      ]
-    })
-    await device.open()
-    const [ configuration ] = device.configurations
-    const [ interface ] = configuration.interfaces
-    await device.selectConfiguration(configuration.configurationValue)
-    await device.claimInterface(interface.interfaceNumber)
-
-    await resetDevice(device)
-    await sendHostConfig(device)
-    const deviceConfig = await readDeviceConfig(device)
-    const bitTimingConstants = await fetchBitTimingConstants(device)
-    await startDevice(device)
+    // init USB device
+    const device = initDevice()
+    // init UI events
+    const $arbitrationIdPair = document.querySelector('#arbitrationIdPair')
+    const $message = document.querySelector('#message')
 
     document.querySelector('#send').addEventListener('click', async () => {
-      const sourceArbitrationId = 0x7E5 // CPC
-      const destinationArbitrationId = 0x7ED // CPC
-      const ccpConnect = [0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00]
-      const testerPresent = [0x02, 0x3E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
-      const readMemoryByAddress = [0x06, 0x23, 0x00, 0x00, 0x00, 0x00, 0x01]
-      const readSoftwareNumber = [0x03, 0x22, 0xF1, 0x21, 0x00, 0x00, 0x00, 0x00]
-      const readPartNumber = [0x03, 0x22, 0xF1, 0x11, 0x00, 0x00, 0x00, 0x00]
-      const readVin = [0x03, 0x22, 0xF1, 0x90, 0x00, 0x00, 0x00, 0x00]
-      const startDiagnosticSession02 = [0x02, 0x10, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00]
-      const startDiagnosticSession03 = [0x02, 0x10, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00]
-      const continuationFrame = [0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
-      const reset = [0x02, 0x11, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00]
-      const requestSeed11 = [0x02, 0x27, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00]
-
-      /*for (let i = 0x0000; i < 0x07FF; ++i) {
-        await send(device, i, ccpConnect)
-        await delay(50)
-      }*/
-      /*await send(device, sourceArbitrationId, reset)
-      await delay(1000)
-      send(device, sourceArbitrationId, startDiagnosticSession03)
-      await delay(100)
-      for (let i = 0; i <= 0xFF; ++i) {
-        const readDid = [0x03, 0x22, 0xF1, i, 0x00, 0x00, 0x00, 0x00]
-        send(device, sourceArbitrationId, readDid)
-        await delay(666)
-      }*/
+      const { source: sourceArbitrationId } = arbitrationIdPairs[$arbitrationIdPair.value]
+      const message = messages[$message.value]
+      await send(device, sourceArbitrationId, reset)
+      // TODO: send continuation frame?
     })
 
     readLoop(device, (result) => {
-      const arbitrationId = result.data.getUint16(4, true)
+      if (!$arbitrationIdPair.value) {
+        return
+      }
+      const {
+        source: sourceArbitrationId,
+        destination: destinationArbitrationId
+      } = arbitrationIdPairs[$arbitrationIdPair.value]
+      const arbitrationId = result.data.getUint16(4, true).toString(16).padStart(3, '0')
+      if (arbitrationId !== sourceArbitrationId && arbitrationId !== destinationArbitrationId) {
+        return
+      }
       const frame = buf2hex(result.data.buffer).slice(24)
-      console.log(`${arbitrationId.toString(16)} > ${frame}`)
-      /*const arbitrationId = result.data.getUint16(4, true)
-      if (arbitrationId !== 0x4c && arbitrationId !== 0x0c) {
-        const frame = buf2hex(result.data.buffer).slice(24)
-        console.log(`${lastSentId} ${arbitrationId.toString(16)} > ${frame}`)
-      }*/
-      //if (arbitrationId === 0x7ed) {
-        //const frame = buf2hex(result.data.buffer).slice(24)
-        //console.log(`${arbitrationId.toString(16)} > ${frame}`)
-      //}
+      document.querySelector('#logs').value += `${JSON.stringify({
+        arbitration_id: arbitrationId,
+        frame,
+        captured: new Date().toISOString()
+      })}\n`
     })
+
+    document.querySelector('#status').innerHTML = 'status: connected'
   } catch (err) {
     alert(err)
   }

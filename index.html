@@ -4,8 +4,30 @@
   </head>
 
   <body>
-    <button id="init">init</button>
-    <button id="send">send</button>
+    <div>
+      <span id="status">status: not connected</span>
+      <button id="init">init</button>
+    </div>
+
+    <div>
+      <select id="arbitrationIdPair">
+        <option value="">device</option>
+        <option value="ecu">ecu</option>
+        <option value="tcu">tcu</option>
+        <option value="cpc">cpc</option>
+        <option value="suspension">suspension</option>
+      </select>
+      <select id="message">
+        <option value="">message</option>
+        <option value="readSoftwareNumber">readSoftwareNumber</option>
+        <option value="readPartNumber">readPartNumber</option>
+        <option value="readVin">readVin</option>
+      </select>
+      <button id="send">send</button>
+    </div>
+
+    <textarea id="logs" disabled></textarea>
+
     <script type="text/javascript" src="webusb.js"></script>
   </body>
 </html>
