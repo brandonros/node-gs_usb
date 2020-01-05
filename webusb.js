@@ -216,8 +216,15 @@ const init = async (deviceName) => {
 
     document.querySelector('#send').addEventListener('click', async () => {
       const { source: sourceArbitrationId } = arbitrationIdPairs[$arbitrationIdPair.value]
-      const message = messages[$message.value]
-      await send(device, sourceArbitrationId, reset)
+      const frame = messages[$message.value]
+      await send(device, sourceArbitrationId, frame)
+      const stringifiedFrame = JSON.stringify({
+        type: 'out',
+        arbitration_id: sourceArbitrationId,
+        frame,
+        sent: new Date().toISOString()
+      })
+      document.querySelector('#logs').value += `${stringifiedFrame}\n`
       // TODO: send continuation frame?
     })
 
@@ -235,6 +242,7 @@ const init = async (deviceName) => {
       }
       const frame = buf2hex(result.data.buffer).slice(24)
       const stringifiedFrame = JSON.stringify({
+        type: 'in',
         arbitration_id: arbitrationId,
         frame,
         captured: new Date().toISOString()
