@@ -187,7 +187,7 @@ const send = async (device, arbitrationId, message) => {
   return device.transferOut(endpointNumber, data)
 }
 
-const initDevice = (deviceName) => {
+const initDevice = async (deviceName) => {
   const device = await navigator.usb.requestDevice({
     filters: [
       devices[deviceName]
@@ -209,7 +209,7 @@ const initDevice = (deviceName) => {
 const init = async (deviceName) => {
   try {
     // init USB device
-    const device = initDevice()
+    const device = await initDevice()
     // init UI events
     const $arbitrationIdPair = document.querySelector('#arbitrationIdPair')
     const $message = document.querySelector('#message')
@@ -234,11 +234,12 @@ const init = async (deviceName) => {
         return
       }
       const frame = buf2hex(result.data.buffer).slice(24)
-      document.querySelector('#logs').value += `${JSON.stringify({
+      const stringifiedFrame = JSON.stringify({
         arbitration_id: arbitrationId,
         frame,
         captured: new Date().toISOString()
-      })}\n`
+      })
+      document.querySelector('#logs').value += `${stringifiedFrame}\n`
     })
 
     document.querySelector('#status').innerHTML = 'status: connected'
