@@ -182,7 +182,7 @@ const send = async (device, arbitrationId, message) => {
   dataView.setUint8(0x12, message[6])
   dataView.setUint8(0x13, message[7])
   const frame = buf2hex(data).slice(24)
-  console.log(`< ${frame}`)
+  console.log(`${arbitrationId.toString(16).padStart(3, '0')} > ${frame}`)
   lastSentId = arbitrationId.toString(16)
   return device.transferOut(endpointNumber, data)
 }
@@ -229,6 +229,8 @@ const init = async (deviceName) => {
     })
 
     readLoop(device, (result) => {
+      const arbitrationId = result.data.getUint16(4, true)
+      const frame = buf2hex(result.data.buffer).slice(24)
       if (!$arbitrationIdPair.value) {
         return
       }
@@ -236,11 +238,10 @@ const init = async (deviceName) => {
         source: sourceArbitrationId,
         destination: destinationArbitrationId
       } = arbitrationIdPairs[$arbitrationIdPair.value]
-      const arbitrationId = result.data.getUint16(4, true)
       if (arbitrationId !== sourceArbitrationId && arbitrationId !== destinationArbitrationId) {
+        console.log(`${arbitrationId.toString(16).padStart(3, '0')} < ${frame}`)
         return
       }
-      const frame = buf2hex(result.data.buffer).slice(24)
       const stringifiedFrame = JSON.stringify({
         type: 'in',
         arbitration_id: arbitrationId.toString(16).padStart(3, '0'),
