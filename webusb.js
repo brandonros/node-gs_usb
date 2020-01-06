@@ -221,7 +221,7 @@ const init = async (deviceName) => {
       const stringifiedFrame = JSON.stringify({
         type: 'out',
         arbitration_id: sourceArbitrationId,
-        frame,
+        frame: buf2hex(frame),
         sent: new Date().toISOString()
       })
       document.querySelector('#logs').value += `${stringifiedFrame}\n`
