@@ -236,14 +236,14 @@ const init = async (deviceName) => {
         source: sourceArbitrationId,
         destination: destinationArbitrationId
       } = arbitrationIdPairs[$arbitrationIdPair.value]
-      const arbitrationId = result.data.getUint16(4, true).toString(16).padStart(3, '0')
+      const arbitrationId = result.data.getUint16(4, true)
       if (arbitrationId !== sourceArbitrationId && arbitrationId !== destinationArbitrationId) {
         return
       }
       const frame = buf2hex(result.data.buffer).slice(24)
       const stringifiedFrame = JSON.stringify({
         type: 'in',
-        arbitration_id: arbitrationId,
+        arbitration_id: arbitrationId.toString(16).padStart(3, '0'),
         frame,
         captured: new Date().toISOString()
       })
