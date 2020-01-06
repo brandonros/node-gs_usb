@@ -215,12 +215,12 @@ const init = async (deviceName) => {
     const $message = document.querySelector('#message')
 
     document.querySelector('#send').addEventListener('click', async () => {
-      const { source: sourceArbitrationId } = arbitrationIdPairs[$arbitrationIdPair.value]
+      const { destination: destinationArbitrationId } = arbitrationIdPairs[$arbitrationIdPair.value]
       const frame = messages[$message.value]
-      await send(device, sourceArbitrationId, frame)
+      await send(device, destinationArbitrationId, frame)
       const stringifiedFrame = JSON.stringify({
         type: 'out',
-        arbitration_id: sourceArbitrationId,
+        arbitration_id: destinationArbitrationId.toString(16).padStart(3, '0'),
         frame: buf2hex(frame),
         sent: new Date().toISOString()
       })
