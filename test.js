@@ -21,16 +21,17 @@ const run = async (deviceName) => {
   const { vendorId, productId } = devices[deviceName]
   await start(vendorId, productId)
   addListener('listener', (frame) => {
+    console.log(frame)
     const id = frame.id.toString(16).padStart(3, '0')
     if (!idsWritten.has(id)) {
       console.log(id)
       idsWritten.add(id)
     }
   })
-  /*setInterval(async () => {
+  setInterval(async () => {
     const frame = Buffer.from([0x03, 0x22, 0xF1, 0x90, 0x00, 0x00, 0x00, 0x00])
     await send({ id: 0x7E0, data: frame })
-  }, 1000)*/
+  }, 100)
 }
 
 run('cantact')
