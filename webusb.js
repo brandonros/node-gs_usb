@@ -180,17 +180,7 @@ const USB_RECIP_INTERFACE = 0x01
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
-const uuid = () => {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = Math.random() * 16 | 0
-    const v = c == 'x' ? r : (r & 0x3 | 0x8)
-    return v.toString(16)
-  })
-}
-
-
 const resetDevice = async (device) => {
-  const bmRequestType =  USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
   const bRequest = GS_USB_BREQ_MODE
   const wValue = 0
   const wIndex = device.configurations[0].interfaces[0].interfaceNumber
@@ -208,13 +198,12 @@ const resetDevice = async (device) => {
 }
 
 const sendHostConfig = async (device) => {
-  const bmRequestType =  USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
   const bRequest = GS_USB_BREQ_HOST_FORMAT
   const wValue = 1
   const wIndex = device.configurations[0].interfaces[0].interfaceNumber
   const data = new ArrayBuffer(4)
   const dataView = new DataView(data)
-  dataView.setUint32(0, 0x0000BEEF, true)
+  dataView.setUint32(0, 0x0000BEEF, false) // not little-endian
   return device.controlTransferOut({
     requestType: 'vendor',
     recipient: 'interface',
@@ -225,7 +214,6 @@ const sendHostConfig = async (device) => {
 }
 
 const readDeviceConfig = async (device) => {
-  const bmRequestType =  USB_DIR_IN | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
   const bRequest = GS_USB_BREQ_DEVICE_CONFIG
   const wValue = 1
   const wIndex = device.configurations[0].interfaces[0].interfaceNumber
@@ -240,7 +228,6 @@ const readDeviceConfig = async (device) => {
 }
 
 const fetchBitTimingConstants = async (device) => {
-  const bmRequestType =  USB_DIR_IN | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
   const bRequest = GS_USB_BREQ_BT_CONST
   const wValue = 0
   const wIndex = device.configurations[0].interfaces[0].interfaceNumber

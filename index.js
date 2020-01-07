@@ -46,12 +46,13 @@ const readDeviceConfig = (device) => {
   const bRequest = GS_USB_BREQ_DEVICE_CONFIG
   const wValue = 1
   const wIndex = device.interfaces[0].descriptor.bInterfaceNumber
+  const length = 0x0C
   return device.controlTransfer(
     bmRequestType,
     bRequest,
     wValue,
     wIndex,
-    0x0C
+    length
   )
 }
 
@@ -61,12 +62,13 @@ const fetchBitTimingConstants = (device) => {
   const bRequest = GS_USB_BREQ_BT_CONST
   const wValue = 0
   const wIndex = device.interfaces[0].descriptor.bInterfaceNumber
+  const length = 0x28
   return device.controlTransfer(
     bmRequestType,
     bRequest,
     wValue,
     wIndex,
-    0x28
+    length
   )
 }
 
