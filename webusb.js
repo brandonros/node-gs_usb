@@ -282,7 +282,8 @@ const buf2hex = (buffer) => { // buffer is an ArrayBuffer
 }
 
 const readLoop = async (device, cb) => {
-  const endpointNumber = 0x01 // in
+  const endpoint = device.configuration.interfaces[0].alternates[0].endpoints.find(e => e.direction === 'in')
+  const endpointNumber = endpoint.endpointNumber
   const length = 0x20
   const result = await device.transferIn(endpointNumber, length)
   cb(result)
@@ -291,7 +292,8 @@ const readLoop = async (device, cb) => {
 }
 
 const send = async (device, arbitrationId, message) => {
-  const endpointNumber = 0x02 // out
+  const endpoint = device.configuration.interfaces[0].alternates[0].endpoints.find(e => e.direction === 'out')
+  const endpointNumber = endpoint.endpointNumber
   const data = new ArrayBuffer(0x20)
   const dataView = new DataView(data)
   dataView.setUint32(0x00, 0xffffffff, true)
