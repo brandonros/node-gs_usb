@@ -329,7 +329,7 @@ const initDevice = async (deviceName) => {
   })
   await device.open()
   const [ configuration ] = device.configurations
-  if (device.configuration === null)
+  if (device.configuration === null) {
     await device.selectConfiguration(configuration.configurationValue)
   }
   await device.claimInterface(configuration.interfaces[0].interfaceNumber)
