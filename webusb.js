@@ -320,9 +320,9 @@ const initDevice = async (deviceName) => {
   })
   await device.open()
   const [ configuration ] = device.configurations
-  const [ interface ] = configuration.interfaces
   await device.selectConfiguration(configuration.configurationValue)
-  await device.claimInterface(interface.interfaceNumber)
+  await device.claimInterface(configuration.interfaces[0].interfaceNumber)
+  await device.claimInterface(configuration.interfaces[1].interfaceNumber)
   await resetDevice(device)
   await sendHostConfig(device)
   const deviceConfig = await readDeviceConfig(device)
