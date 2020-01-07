@@ -335,6 +335,7 @@ const init = async (deviceName) => {
     })
 
     readLoop(device, (result) => {
+      console.log(buf2hex(result.data.buffer))
       const arbitrationId = result.data.getUint16(4, true)
       const frame = buf2hex(result.data.buffer).slice(24)
       if (noisyArbitrationIds.has(arbitrationId)) {
