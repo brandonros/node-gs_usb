@@ -15,17 +15,13 @@ const devices = {
 
 const { start, addListener, send } = require('./index')
 
-const idsWritten = new Set()
-
 const run = async (deviceName) => {
   const { vendorId, productId } = devices[deviceName]
   await start(vendorId, productId)
   addListener('listener', (frame) => {
-    console.log(frame)
-    const id = frame.id.toString(16).padStart(3, '0')
-    if (!idsWritten.has(id)) {
-      console.log(id)
-      idsWritten.add(id)
+    const id = frame.id
+    if (id === 0x7E8) {
+      console.log(frame)
     }
   })
   setInterval(async () => {

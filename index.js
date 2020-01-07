@@ -30,12 +30,13 @@ const sendHostConfig = (device) => {
   const bRequest = GS_USB_BREQ_HOST_FORMAT
   const wValue = 1
   const wIndex = device.interfaces[0].descriptor.bInterfaceNumber
-  const data = Buffer.from([0x00, 0x00, 0xBE, 0xEF])
+  //const data = Buffer.from([0x00, 0x00, 0xBE, 0xEF])
+  const data = Buffer.from([0xEF, 0xBE, 0x00, 0x00])
   console.log({
     request: bRequest,
     value: wValue,
     wIndex: wIndex,
-    data: data
+    data: data.toString('hex')
   })
   return device.controlTransfer(
     bmRequestType,
@@ -91,7 +92,7 @@ const startDevice = (device) => {
     request: bRequest,
     value: wValue,
     wIndex: wIndex,
-    data: data
+    data: data.toString('hex')
   })
   return device.controlTransfer(
     bmRequestType,
@@ -115,7 +116,7 @@ const resetDevice = (device) => {
     request: bRequest,
     value: wValue,
     wIndex: wIndex,
-    data: data
+    data: data.toString('hex')
   })
   return device.controlTransfer(
     bmRequestType,
@@ -152,9 +153,9 @@ const setupDevice = async (vendorId, productId) => {
   await resetDevice(device)
   await sendHostConfig(device)
   const deviceConfig = await readDeviceConfig(device)
-  console.log({ deviceConfig })
+  console.log({ deviceConfig: deviceConfig.toString('hex') })
   const bitTimingConstants = await fetchBitTimingConstants(device)
-  console.log({ bitTimingConstants })
+  console.log({ bitTimingConstants: bitTimingConstants.toString('hex') })
   await startDevice(device)
   inEndpoint = device.interfaces[0].endpoints.find(endpoint => endpoint.constructor.name === 'InEndpoint')
   outEndpoint = device.interfaces[0].endpoints.find(endpoint => endpoint.constructor.name === 'OutEndpoint')
