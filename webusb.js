@@ -283,7 +283,7 @@ const buf2hex = (buffer) => { // buffer is an ArrayBuffer
 
 const readLoop = async (device, cb) => {
   const endpointNumber = 0x01 // in
-  const length = 0x14
+  const length = 0x20
   const result = await device.transferIn(endpointNumber, length)
   cb(result)
   await delay(16)
