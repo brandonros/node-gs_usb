@@ -307,7 +307,7 @@ const send = async (device, arbitrationId, message) => {
   dataView.setUint8(0x12, message[6])
   dataView.setUint8(0x13, message[7])
   console.log(`> ${buf2hex(data)}`)
-  const frame = buf2hex(data).slice(24)
+  //const frame = buf2hex(data).slice(24)
   //console.log(`${arbitrationId.toString(16).padStart(3, '0')} > ${frame}`)
   return device.transferOut(endpointNumber, data)
 }
@@ -326,9 +326,9 @@ const initDevice = async (deviceName) => {
   await resetDevice(device)
   await sendHostConfig(device)
   const deviceConfig = await readDeviceConfig(device)
-  console.log({ deviceConfig })
+  console.log({ deviceConfig: buf2hex(deviceConfig.data.buffer) })
   const bitTimingConstants = await fetchBitTimingConstants(device)
-  console.log({ bitTimingConstants })
+  console.log({ bitTimingConstants: buf2hex(bitTimingConstants.data.buffer) })
   await startDevice(device)
   return device
 }

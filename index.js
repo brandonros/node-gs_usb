@@ -159,6 +159,7 @@ const setupDevice = async (vendorId, productId) => {
   inEndpoint = device.interfaces[0].endpoints.find(endpoint => endpoint.constructor.name === 'InEndpoint')
   outEndpoint = device.interfaces[0].endpoints.find(endpoint => endpoint.constructor.name === 'OutEndpoint')
   inEndpoint.on('data', (frame) => {
+    console.log(`< ${frame.toString('hex')}`)
     const arbId = frame.readUInt16LE(4)
     const payload = frame.slice(12)
     emitter.emit('frame', {
