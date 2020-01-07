@@ -40,6 +40,127 @@ const messages = {
   continuationFrame: [0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 }
 
+const noisyArbitrationIds = new Set([
+  0x0ae,
+  0x0b3,
+  0x0a1,
+  0x094,
+  0x0a3,
+  0x03d,
+  0x02f,
+  0x18d,
+  0x098,
+  0x18e,
+  0x087,
+  0x096,
+  0x0b1,
+  0x1f3,
+  0x4b0,
+  0x141,
+  0x1e9,
+  0x4a6,
+  0x0d5,
+  0x14b,
+  0x14d,
+  0x1e5,
+  0x33b,
+  0x451,
+  0x469,
+  0x188,
+  0x339,
+  0x4d8,
+  0x1ee,
+  0x2f7,
+  0x401,
+  0x2cf,
+  0x4bb,
+  0x133,
+  0x2f0,
+  0x1e1,
+  0x34b,
+  0x32e,
+  0x4aa,
+  0x46b,
+  0x37f,
+  0x351,
+  0x379,
+  0x3e8,
+  0x341,
+  0x137,
+  0x020,
+  0x3c2,
+  0x209,
+  0x2b9,
+  0x151,
+  0x353,
+  0x122,
+  0x147,
+  0x149,
+  0x225,
+  0x15a,
+  0x22b,
+  0x357,
+  0x369,
+  0x49b,
+  0x3a4,
+  0x37b,
+  0x068,
+  0x381,
+  0x377,
+  0x4af,
+  0x2fb,
+  0x2f1,
+  0x31a,
+  0x4d3,
+  0x2f3,
+  0x4b8,
+  0x409,
+  0x335,
+  0x4cd,
+  0x337,
+  0x35d,
+  0x2c4,
+  0x2f5,
+  0x320,
+  0x328,
+  0x3bc,
+  0x4bd,
+  0x3e7,
+  0x40c,
+  0x38e,
+  0x4ae,
+  0x3a2,
+  0x458,
+  0x2fe,
+  0x075,
+  0x3c4,
+  0x48a,
+  0x4c2,
+  0x407,
+  0x071,
+  0x3c6,
+  0x3ce,
+  0x507,
+  0x30b,
+  0x3ed,
+  0x490,
+  0x50b,
+  0x309,
+  0x3ef,
+  0x3f3,
+  0x49e,
+  0x3f1,
+  0x4a8,
+  0x3db,
+  0x2c6,
+  0x3eb,
+  0x334,
+  0x4c1,
+  0x4c6,
+  0x2de,
+  0x4d6
+])
+
 const GS_USB_BREQ_HOST_FORMAT = 0
 const GS_USB_BREQ_BITTIMING = 1
 const GS_USB_BREQ_MODE = 2
@@ -164,8 +285,6 @@ const readLoop = async (device, cb) => {
   return readLoop(device, cb)
 }
 
-let lastSentId = ''
-
 const send = async (device, arbitrationId, message) => {
   const endpointNumber = 0x02 // out
   const data = new ArrayBuffer(0x14)
@@ -184,7 +303,6 @@ const send = async (device, arbitrationId, message) => {
   dataView.setUint8(0x13, message[7])
   const frame = buf2hex(data).slice(24)
   console.log(`${arbitrationId.toString(16).padStart(3, '0')} > ${frame}`)
-  lastSentId = arbitrationId.toString(16)
   return device.transferOut(endpointNumber, data)
 }
 
@@ -218,7 +336,7 @@ const init = async (deviceName) => {
     document.querySelector('#send').addEventListener('click', async () => {
       const { source: sourceArbitrationId } = arbitrationIdPairs[$arbitrationIdPair.value]
       const frame = messages[$message.value]
-      await send(device, sourceArbitrationId, frame)
+      const result = await send(device, sourceArbitrationId, frame)
       const stringifiedFrame = JSON.stringify({
         type: 'out',
         arbitration_id: sourceArbitrationId.toString(16).padStart(3, '0'),
@@ -232,15 +350,7 @@ const init = async (deviceName) => {
     readLoop(device, (result) => {
       const arbitrationId = result.data.getUint16(4, true)
       const frame = buf2hex(result.data.buffer).slice(24)
-      if (!$arbitrationIdPair.value) {
-        return
-      }
-      const {
-        source: sourceArbitrationId,
-        destination: destinationArbitrationId
-      } = arbitrationIdPairs[$arbitrationIdPair.value]
-      if (arbitrationId !== sourceArbitrationId && arbitrationId !== destinationArbitrationId) {
-        console.log(`${arbitrationId.toString(16).padStart(3, '0')} < ${frame}`)
+      if (noisyArbitrationIds.has(arbitrationId)) {
         return
       }
       const stringifiedFrame = JSON.stringify({
