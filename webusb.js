@@ -188,6 +188,12 @@ const resetDevice = async (device) => {
   const dataView = new DataView(data)
   dataView.setUint32(0, 0x00000000, true) // mode
   dataView.setUint32(4, 0x00000000, true) // flags
+  console.log({
+    request: bRequest,
+    value: wValue,
+    index: wIndex,
+    data: buf2hex(data)
+  })
   return device.controlTransferOut({
     requestType: 'vendor',
     recipient: 'interface',
@@ -204,6 +210,12 @@ const sendHostConfig = async (device) => {
   const data = new ArrayBuffer(4)
   const dataView = new DataView(data)
   dataView.setUint32(0, 0x0000BEEF, false) // not little-endian
+  console.log({
+    request: bRequest,
+    value: wValue,
+    index: wIndex,
+    data: buf2hex(data)
+  })
   return device.controlTransferOut({
     requestType: 'vendor',
     recipient: 'interface',
@@ -250,6 +262,12 @@ const startDevice = async (device) => {
   const dataView = new DataView(data)
   dataView.setUint32(0, 0x00000001, true) // mode
   dataView.setUint32(4, 0x00000000, true) // flags
+  console.log({
+    request: bRequest,
+    value: wValue,
+    index: wIndex,
+    data: buf2hex(data)
+  })
   return device.controlTransferOut({
     requestType: 'vendor',
     recipient: 'interface',
@@ -280,17 +298,17 @@ const send = async (device, arbitrationId, message) => {
   dataView.setUint16(0x04, arbitrationId, true)
   dataView.setUint16(0x06, 0x0000, true)
   dataView.setUint32(0x08, 0x00000008, true)
-  dataView.setUint8(0x0C, message[0])
-  dataView.setUint8(0x0D, message[1])
-  dataView.setUint8(0x0E, message[2])
-  dataView.setUint8(0x0F, message[3])
-  dataView.setUint8(0x10, message[4])
-  dataView.setUint8(0x11, message[5])
-  dataView.setUint8(0x12, message[6])
-  dataView.setUint8(0x13, message[7])
+  dataView.setUint8(0x0C, message[7])
+  dataView.setUint8(0x0D, message[6])
+  dataView.setUint8(0x0E, message[5])
+  dataView.setUint8(0x0F, message[4])
+  dataView.setUint8(0x10, message[3])
+  dataView.setUint8(0x11, message[2])
+  dataView.setUint8(0x12, message[1])
+  dataView.setUint8(0x13, message[0])
   console.log(`> ${buf2hex(data)}`)
   const frame = buf2hex(data).slice(24)
-  console.log(`${arbitrationId.toString(16).padStart(3, '0')} > ${frame}`)
+  //console.log(`${arbitrationId.toString(16).padStart(3, '0')} > ${frame}`)
   return device.transferOut(endpointNumber, data)
 }
 
@@ -308,7 +326,9 @@ const initDevice = async (deviceName) => {
   await resetDevice(device)
   await sendHostConfig(device)
   const deviceConfig = await readDeviceConfig(device)
+  console.log({ deviceConfig })
   const bitTimingConstants = await fetchBitTimingConstants(device)
+  console.log({ bitTimingConstants })
   await startDevice(device)
   return device
 }

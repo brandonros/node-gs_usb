@@ -31,6 +31,12 @@ const sendHostConfig = (device) => {
   const wValue = 1
   const wIndex = device.interfaces[0].descriptor.bInterfaceNumber
   const data = Buffer.from([0x00, 0x00, 0xBE, 0xEF])
+  console.log({
+    request: bRequest,
+    value: wValue,
+    wIndex: wIndex,
+    data: data
+  })
   return device.controlTransfer(
     bmRequestType,
     bRequest,
@@ -81,6 +87,12 @@ const startDevice = (device) => {
   const data = Buffer.alloc(8)
   data.writeUInt32LE(0x00000001, 0) // mode
   data.writeUInt32LE(0x00000000, 4) // flags
+  console.log({
+    request: bRequest,
+    value: wValue,
+    wIndex: wIndex,
+    data: data
+  })
   return device.controlTransfer(
     bmRequestType,
     bRequest,
@@ -99,6 +111,12 @@ const resetDevice = (device) => {
   const data = Buffer.alloc(8)
   data.writeUInt32LE(0x00000000, 0) // mode
   data.writeUInt32LE(0x00000000, 4) // flags
+  console.log({
+    request: bRequest,
+    value: wValue,
+    wIndex: wIndex,
+    data: data
+  })
   return device.controlTransfer(
     bmRequestType,
     bRequest,
@@ -134,7 +152,9 @@ const setupDevice = async (vendorId, productId) => {
   await resetDevice(device)
   await sendHostConfig(device)
   const deviceConfig = await readDeviceConfig(device)
+  console.log({ deviceConfig })
   const bitTimingConstants = await fetchBitTimingConstants(device)
+  console.log({ bitTimingConstants })
   await startDevice(device)
   inEndpoint = device.interfaces[0].endpoints.find(endpoint => endpoint.constructor.name === 'InEndpoint')
   outEndpoint = device.interfaces[0].endpoints.find(endpoint => endpoint.constructor.name === 'OutEndpoint')
