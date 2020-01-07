@@ -292,7 +292,7 @@ const readLoop = async (device, cb) => {
 
 const send = async (device, arbitrationId, message) => {
   const endpointNumber = 0x02 // out
-  const data = new ArrayBuffer(0x14)
+  const data = new ArrayBuffer(0x20)
   const dataView = new DataView(data)
   dataView.setUint32(0x00, 0xffffffff, true)
   dataView.setUint16(0x04, arbitrationId, true)
@@ -306,6 +306,18 @@ const send = async (device, arbitrationId, message) => {
   dataView.setUint8(0x11, message[5])
   dataView.setUint8(0x12, message[6])
   dataView.setUint8(0x13, message[7])
+  dataView.setUint8(0x14, 0x00) // maybe?
+  dataView.setUint8(0x15, 0x00) // maybe?
+  dataView.setUint8(0x16, 0x00) // maybe?
+  dataView.setUint8(0x17, 0x00) // maybe?
+  dataView.setUint8(0x18, 0x00) // maybe?
+  dataView.setUint8(0x19, 0x00) // maybe?
+  dataView.setUint8(0x1A, 0x00) // maybe?
+  dataView.setUint8(0x1B, 0x00) // maybe?
+  dataView.setUint8(0x1C, 0x00) // maybe?
+  dataView.setUint8(0x1D, 0x00) // maybe?
+  dataView.setUint8(0x1E, 0x00) // maybe?
+  dataView.setUint8(0x1F, 0x00) // maybe?
   console.log(`> ${buf2hex(data)}`)
   //const frame = buf2hex(data).slice(24)
   //console.log(`${arbitrationId.toString(16).padStart(3, '0')} > ${frame}`)
@@ -322,7 +334,6 @@ const initDevice = async (deviceName) => {
   const [ configuration ] = device.configurations
   await device.selectConfiguration(configuration.configurationValue)
   await device.claimInterface(configuration.interfaces[0].interfaceNumber)
-  await device.claimInterface(configuration.interfaces[1].interfaceNumber)
   await resetDevice(device)
   await sendHostConfig(device)
   const deviceConfig = await readDeviceConfig(device)
