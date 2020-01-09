@@ -84,7 +84,7 @@ const transferDataOut = (outEndpoint, frame) => {
 }
 
 const transferDataIn = (inEndpoint, length) => {
-  debug('inEndpoint')
+  debug('transferDataIn')
   return new Promise((resolve, reject) => {
     inEndpoint.transfer(length, (err, res) => {
       if (err) {
