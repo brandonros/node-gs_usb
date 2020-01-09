@@ -1,61 +1,40 @@
-const devices = {
-  canalyze: {
-    vendorId: 0x0483,
-    productId: 0x1234
-  },
-  canable: {
-    vendorId: 0x1d50,
-    productId: 0x606f
-  },
-  cantact: {
-    vendorId: 0x1d50,
-    productId: 0x606f
-  }
-}
-
-const arbitrationIdPairs = {
-  cpc: {
-    source: 0x7E5,
-    destination: 0x7ED
-  },
-  tcu: {
-    source: 0x749,
-    destination: 0x729
-  },
-  suspension: {
-    source: 0x744,
-    destination: 0x724
-  },
-  ecu: {
-    source: 0x7E0,
-    destination: 0x7E8
-  }
-}
-
-const { setupDevice } = require('./index')
-
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+const { setupDevice, transferDataOut, transferDataIn } = require('./index')
 
 const run = async () => {
-  const moduleName = 'ecu'
-  const canable = await setupDevice(0x1d50, 0x606f, 17)
-  const canalyze = await setupDevice(0x1d50, 0x606f, 19)
-  canable.on('frame-in', (frame) => {
-    console.log(`canable < ${frame.toString('hex')}`)
-  })
-  canalyze.on('frame-in', (frame) => {
-    console.log(`canalyze < ${frame.toString('hex')}`)
-  })
-  canable.emit('start')
-  canalyze.emit('start')
-  setInterval(async () => {
-    const readVin = Buffer.from([0x03, 0x22, 0xF1, 0x90, 0x00, 0x00, 0x00, 0x00])
-    const idBuffer = Buffer.alloc(2)
-    idBuffer.writeUInt16LE(arbitrationIdPairs[moduleName].source, 0)
-    const frame = Buffer.from(`ffffffff${idBuffer.toString('hex')}000008000000${readVin.toString('hex')}`, 'hex')
-    canalyze.emit('frame-out', frame)
-    //canable.emit('frame-out', frame)
-  }, 500)
+  const { inEndpoint, outEndpoint } = await setupDevice(0x1d50, 0x606f)
+  const arbitrationId = 0x7E0
+  const message = [
+    0x03,
+    0x22,
+    0xF1,
+    0x21,
+    0x00,
+    0x00,
+    0x00,
+    0x00
+  ]
+  const frameLength = 0x14
+  const data = new ArrayBuffer(frameLength)
+  const dataView = new DataView(data)
+  dataView.setUint32(0x00, 0xffffffff, true) // echo_id
+  dataView.setUint32(0x04, arbitrationId, true) // can_id
+  dataView.setUint8(0x08, 0x08) // can_dlc
+  dataView.setUint8(0x09, 0x00) // channel
+  dataView.setUint8(0x0A, 0x00) // flags
+  dataView.setUint8(0x0B, 0x00) // reserved
+  dataView.setUint8(0x0C, message[0])
+  dataView.setUint8(0x0D, message[1])
+  dataView.setUint8(0x0E, message[2])
+  dataView.setUint8(0x0F, message[3])
+  dataView.setUint8(0x10, message[4])
+  dataView.setUint8(0x11, message[5])
+  dataView.setUint8(0x12, message[6])
+  dataView.setUint8(0x13, message[7])
+  await transferDataOut(outEndpoint, Buffer.from(data))
+  for (;;) {
+    const frame = await transferDataIn(inEndpoint, 0x14)
+    console.log(`< ${frame.toString('hex')}`)
+  }
 }
 
 run()

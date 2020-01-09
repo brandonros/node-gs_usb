@@ -1,5 +1,4 @@
 const usb = require('usb')
-const EventEmitter = require('events')
 const util = require('util')
 const debug = require('debug')('node-gs_usb')
 
@@ -20,13 +19,40 @@ const USB_DIR_IN = 0x80
 const USB_TYPE_VENDOR = (0x02 << 5)
 const USB_RECIP_INTERFACE = 0x01
 
+const setDeviceMode = (device, mode, flags) => {
+  debug('resetDevice')
+  const bmRequestType =  USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
+  const bRequest = GS_USB_BREQ_MODE
+  const wValue = 0
+  const wIndex = device.interfaces[0].descriptor.bInterfaceNumber
+  const data = Buffer.alloc(8)
+  data.writeUInt32LE(mode, 0) // mode
+  data.writeUInt32LE(flags, 4) // flags
+  console.log({
+    direction: 'out',
+    fn: 'setDeviceMode',
+    request: bRequest,
+    value: wValue,
+    wIndex: wIndex,
+    data: data.toString('hex')
+  })
+  return device.controlTransfer(
+    bmRequestType,
+    bRequest,
+    wValue,
+    wIndex,
+    data
+  )
+}
+
 const sendHostConfig = (device) => {
   debug('sendHostConfig')
   const bmRequestType =  USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
   const bRequest = GS_USB_BREQ_HOST_FORMAT
   const wValue = 1
   const wIndex = device.interfaces[0].descriptor.bInterfaceNumber
-  const data = Buffer.from([0x00, 0x00, 0xBE, 0xEF])
+  const data = Buffer.alloc(4)
+  data.writeUInt32LE(0x0000BEEF, 0)
   console.log({
     direction: 'out',
     fn: 'sendHostConfig',
@@ -44,93 +70,10 @@ const sendHostConfig = (device) => {
   )
 }
 
-const readDeviceConfig = (device) => {
-  debug('readDeviceConfig')
-  const bmRequestType =  USB_DIR_IN | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
-  const bRequest = GS_USB_BREQ_DEVICE_CONFIG
-  const wValue = 1
-  const wIndex = device.interfaces[0].descriptor.bInterfaceNumber
-  const length = 0x0C
-  return device.controlTransfer(
-    bmRequestType,
-    bRequest,
-    wValue,
-    wIndex,
-    length
-  )
-}
-
-const fetchBitTimingConstants = (device) => {
-  debug('fetchBitTimingConstants')
-  const bmRequestType =  USB_DIR_IN | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
-  const bRequest = GS_USB_BREQ_BT_CONST
-  const wValue = 0
-  const wIndex = device.interfaces[0].descriptor.bInterfaceNumber
-  const length = 0x28
-  return device.controlTransfer(
-    bmRequestType,
-    bRequest,
-    wValue,
-    wIndex,
-    length
-  )
-}
-
-const startDevice = (device) => {
-  debug('startDevice')
-  const bmRequestType =  USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
-  const bRequest = GS_USB_BREQ_MODE
-  const wValue = 0
-  const wIndex = device.interfaces[0].descriptor.bInterfaceNumber
-  const data = Buffer.alloc(8)
-  data.writeUInt32LE(0x00000001, 0) // mode
-  data.writeUInt32LE(0x00000000, 4) // flags
-  console.log({
-    direction: 'out',
-    fn: 'startDevice',
-    request: bRequest,
-    value: wValue,
-    wIndex: wIndex,
-    data: data.toString('hex')
-  })
-  return device.controlTransfer(
-    bmRequestType,
-    bRequest,
-    wValue,
-    wIndex,
-    data
-  )
-}
-
-const resetDevice = (device) => {
-  debug('resetDevice')
-  const bmRequestType =  USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
-  const bRequest = GS_USB_BREQ_MODE
-  const wValue = 0
-  const wIndex = device.interfaces[0].descriptor.bInterfaceNumber
-  const data = Buffer.alloc(8)
-  data.writeUInt32LE(0x00000000, 0) // mode
-  data.writeUInt32LE(0x00000000, 4) // flags
-  console.log({
-    direction: 'out',
-    fn: 'resetDevice',
-    request: bRequest,
-    value: wValue,
-    wIndex: wIndex,
-    data: data.toString('hex')
-  })
-  return device.controlTransfer(
-    bmRequestType,
-    bRequest,
-    wValue,
-    wIndex,
-    data
-  )
-}
-
-const transferFrame = (outEndpoint, frame) => {
-  debug('transferFrame')
+const transferDataOut = (outEndpoint, frame) => {
+  debug('transferDataOut')
   return new Promise((resolve, reject) => {
+    console.log(`> ${frame.toString()}`)
     outEndpoint.transfer(frame, (err) => {
       if (err) {
         return reject(err)
@@ -140,43 +83,42 @@ const transferFrame = (outEndpoint, frame) => {
   })
 }
 
-const setupDevice = async (vendorId, productId, deviceAddress) => {
+const transferDataIn = (inEndpoint, length) => {
+  debug('inEndpoint')
+  return new Promise((resolve, reject) => {
+    inEndpoint.transfer(length, (err, res) => {
+      if (err) {
+        return reject(err)
+      }
+      resolve(res)
+    })
+  })
+}
+
+const setupDevice = async (vendorId, productId) => {
   //usb.setDebugLevel(4)
   const deviceList = usb.getDeviceList()
   const device = deviceList.find(device => device.deviceDescriptor.idProduct === productId &&
-      device.deviceDescriptor.idVendor === vendorId &&
-      device.deviceAddress === deviceAddress)
+      device.deviceDescriptor.idVendor === vendorId)
   if (!device) {
     throw new Error('Device not found')
   }
   device.open()
   device.interfaces[0].claim()
   device.controlTransfer = util.promisify(device.controlTransfer)
-  await resetDevice(device)
+  await setDeviceMode(device, 0x00000000, 0x00000000) // reset device
   await sendHostConfig(device)
-  const deviceConfig = await readDeviceConfig(device)
-  const bitTimingConstants = await fetchBitTimingConstants(device)
-  await startDevice(device)
-  const emitter = new EventEmitter()
+  await setDeviceMode(device, 0x00000001, 0x00000000) // start device
   const inEndpoint = device.interfaces[0].endpoints.find(endpoint => endpoint.constructor.name === 'InEndpoint')
   const outEndpoint = device.interfaces[0].endpoints.find(endpoint => endpoint.constructor.name === 'OutEndpoint')
-  inEndpoint.on('data', (frame) => {
-    emitter.emit('frame-in', frame)
-  })
-  inEndpoint.on('error', (err) => {
-    console.error(err)
-  })
-  outEndpoint.on('error', (err) => {
-    console.error(err)
-  })
-  emitter.on('frame-out', async (frame) => {
-    await transferFrame(outEndpoint, frame)
-  })
-  emitter.on('start', () => inEndpoint.startPoll())
-  return emitter
+  return {
+    inEndpoint,
+    outEndpoint
+  }
 }
 
 module.exports = {
   setupDevice,
-  transferFrame
+  transferDataOut,
+  transferDataIn
 }
