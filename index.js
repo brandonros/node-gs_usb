@@ -70,10 +70,30 @@ const sendHostConfig = (device) => {
   )
 }
 
+const buildFrame = (arbitrationId, message) => {
+  const frameLength = 0x14
+  const data = new ArrayBuffer(frameLength)
+  const dataView = new DataView(data)
+  dataView.setUint32(0x00, 0xffffffff, true) // echo_id
+  dataView.setUint32(0x04, arbitrationId, true) // can_id
+  dataView.setUint8(0x08, 0x08) // can_dlc
+  dataView.setUint8(0x09, 0x00) // channel
+  dataView.setUint8(0x0A, 0x00) // flags
+  dataView.setUint8(0x0B, 0x00) // reserved
+  dataView.setUint8(0x0C, message[0])
+  dataView.setUint8(0x0D, message[1])
+  dataView.setUint8(0x0E, message[2])
+  dataView.setUint8(0x0F, message[3])
+  dataView.setUint8(0x10, message[4])
+  dataView.setUint8(0x11, message[5])
+  dataView.setUint8(0x12, message[6])
+  dataView.setUint8(0x13, message[7])
+  return Buffer.from(data)
+}
+
 const transferDataOut = (outEndpoint, frame) => {
   debug('transferDataOut')
   return new Promise((resolve, reject) => {
-    console.log(`> ${frame.toString()}`)
     outEndpoint.transfer(frame, (err) => {
       if (err) {
         return reject(err)
@@ -106,9 +126,9 @@ const setupDevice = async (vendorId, productId) => {
   device.open()
   device.interfaces[0].claim()
   device.controlTransfer = util.promisify(device.controlTransfer)
-  await setDeviceMode(device, 0x00000000, 0x00000000) // reset device
+  await setDeviceMode(device, GS_CAN_MODE_RESET, 0x00000000)
   await sendHostConfig(device)
-  await setDeviceMode(device, 0x00000001, 0x00000000) // start device
+  await setDeviceMode(device, GS_CAN_MODE_START, 0x00000000)
   const inEndpoint = device.interfaces[0].endpoints.find(endpoint => endpoint.constructor.name === 'InEndpoint')
   const outEndpoint = device.interfaces[0].endpoints.find(endpoint => endpoint.constructor.name === 'OutEndpoint')
   return {
@@ -120,5 +140,6 @@ const setupDevice = async (vendorId, productId) => {
 module.exports = {
   setupDevice,
   transferDataOut,
-  transferDataIn
+  transferDataIn,
+  buildFrame
 }
