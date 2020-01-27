@@ -18,6 +18,7 @@
   "homepage": "https://github.com/brandonros/node-gs_usb#readme",
   "dependencies": {
     "debug": "^4.1.1",
+    "event-debug": "^2.1.0",
     "usb": "^1.6.0"
   }
 }
