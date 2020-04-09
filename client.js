@@ -112,7 +112,7 @@ const run = async () => {
     receiveQueue.push(payload)
   })
   await startDiagnosticSession(outEndpoint, 0x03)
-  await requestSeed(outEndpoint, 0x11)
+  /*await requestSeed(outEndpoint, 0x11)
   await requestSeed(outEndpoint, 0x11)
   const key = await new Promise(resolve => {
     rl.question('Key: ', (answer) => {
@@ -124,7 +124,7 @@ const run = async () => {
   await readDid(outEndpoint, 0xF199)
   for (let i = 0; i <= 0xFF; ++i) {
     await requestSeed(outEndpoint, i)
-  }
+  }*/
 }
 
 run()
