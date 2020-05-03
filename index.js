@@ -16,7 +16,7 @@ const USB_RECIP_INTERFACE = 0x01
 
 const setDeviceMode = (device, mode, flags) => {
   debug('resetDevice')
-  const bmRequestType =  USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
+  const bmRequestType = USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
   const bRequest = GS_USB_BREQ_MODE
   const wValue = 0 // https://github.com/torvalds/linux/blob/master/drivers/net/can/usb/gs_usb.c#L255
   const wIndex = device.interfaces[0].descriptor.bInterfaceNumber
@@ -69,7 +69,7 @@ const buildFrame = (arbitrationId, message) => {
   const frameLength = 0x14
   const data = new ArrayBuffer(frameLength)
   const dataView = new DataView(data)
-  dataView.setUint32(0x00, 0x00000000, true) // echo_id
+  dataView.setUint32(0x00, 0xFFFFFFFF, true) // echo_id
   dataView.setUint32(0x04, arbitrationId, true) // can_id
   dataView.setUint8(0x08, 0x08) // can_dlc
   dataView.setUint8(0x09, 0x00) // channel
@@ -123,7 +123,8 @@ const setupDevice = async (vendorId, productId) => {
   //usb.setDebugLevel(4)
   const deviceList = usb.getDeviceList()
   const device = deviceList.find(device => {
-    return device.deviceDescriptor.idProduct === productId && device.deviceDescriptor.idVendor === vendorId
+    return device.deviceDescriptor.idProduct === productId &&
+      device.deviceDescriptor.idVendor === vendorId
   })
   if (!device) {
     throw new Error('Device not found')
