@@ -23,14 +23,6 @@ const setDeviceMode = (device, mode, flags) => {
   const data = Buffer.alloc(8)
   data.writeUInt32LE(mode, 0) // mode
   data.writeUInt32LE(flags, 4) // flags
-  console.log({
-    direction: 'out',
-    fn: 'setDeviceMode',
-    request: bRequest,
-    value: wValue,
-    wIndex: wIndex,
-    data: data.toString('hex')
-  })
   return device.controlTransfer(
     bmRequestType,
     bRequest,
@@ -48,14 +40,6 @@ const sendHostConfig = (device) => {
   const wIndex = device.interfaces[0].descriptor.bInterfaceNumber
   const data = Buffer.alloc(4)
   data.writeUInt32LE(0xEFBE0000, 0)
-  console.log({
-    direction: 'out',
-    fn: 'sendHostConfig',
-    request: bRequest,
-    value: wValue,
-    wIndex: wIndex,
-    data: data.toString('hex')
-  })
   return device.controlTransfer(
     bmRequestType,
     bRequest,
@@ -96,7 +80,7 @@ const parseFrame = (frame) => {
 }
 
 const transferDataOut = (outEndpoint, frame) => {
-  debug('transferDataOut')
+  debug(`transferDataOut frame=${frame.toString('hex')}`)
   return new Promise((resolve, reject) => {
     outEndpoint.transfer(frame, (err) => {
       if (err) {
@@ -108,13 +92,13 @@ const transferDataOut = (outEndpoint, frame) => {
 }
 
 const transferDataIn = (inEndpoint, length) => {
-  debug('transferDataIn')
   return new Promise((resolve, reject) => {
-    inEndpoint.transfer(length, (err, res) => {
+    inEndpoint.transfer(length, (err, frame) => {
       if (err) {
         return reject(err)
       }
-      resolve(res)
+      debug(`transferDataIn frame=${frame.toString('hex')}`)
+      resolve(frame)
     })
   })
 }
@@ -132,11 +116,11 @@ const setupDevice = async (vendorId, productId) => {
   device.open()
   device.interfaces[0].claim()
   device.controlTransfer = util.promisify(device.controlTransfer)
+  const inEndpoint = device.interfaces[0].endpoints.find(endpoint => endpoint.constructor.name === 'InEndpoint')
+  const outEndpoint = device.interfaces[0].endpoints.find(endpoint => endpoint.constructor.name === 'OutEndpoint')
   await setDeviceMode(device, GS_CAN_MODE_RESET, 0x00000000)
   await sendHostConfig(device)
   await setDeviceMode(device, GS_CAN_MODE_START, 0x00000000)
-  const inEndpoint = device.interfaces[0].endpoints.find(endpoint => endpoint.constructor.name === 'InEndpoint')
-  const outEndpoint = device.interfaces[0].endpoints.find(endpoint => endpoint.constructor.name === 'OutEndpoint')
   return {
     inEndpoint,
     outEndpoint
