@@ -19,6 +19,10 @@ const VENDOR_ID = 0x1D50
 const PRODUCT_ID = 0x606F
 
 class GsUsb extends EventEmitter {
+  constructor() {
+    super()
+  }
+
   setDeviceMode(mode, flags) {
     debug('resetDevice')
     const bmRequestType = USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
