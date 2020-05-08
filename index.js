@@ -63,10 +63,10 @@ class GsUsb extends EventEmitter {
       const frame = await this.inEndpoint.transfer(32)
       const arbitrationId = frame.readUInt32LE(4)
       const data = frame.slice(12, 12 + 8)
-      this.emit('frame', {
-        arbitrationId,
+      this.emit('frame', Buffer.concat([
+        Buffer.from(arbitrationId),
         data
-      })
+      ]))
     }
   }
 
