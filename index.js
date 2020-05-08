@@ -32,8 +32,7 @@ class GsUsb extends EventEmitter {
     const data = Buffer.alloc(8)
     data.writeUInt32LE(mode, 0) // mode
     data.writeUInt32LE(flags, 4) // flags
-    return this.device.controlTransfer.call(
-      this.device,
+    return this.device.controlTransfer(
       bmRequestType,
       bRequest,
       wValue,
@@ -50,8 +49,7 @@ class GsUsb extends EventEmitter {
     const wIndex = this.device.interfaces[0].descriptor.bInterfaceNumber
     const data = Buffer.alloc(4)
     data.writeUInt32LE(0xEFBE0000, 0)
-    return this.device.controlTransfer.call(
-      this.device,
+    return this.device.controlTransfer(
       bmRequestType,
       bRequest,
       wValue,
@@ -62,7 +60,7 @@ class GsUsb extends EventEmitter {
 
   async recv() {
     for (;;) {
-      const frame = await this.inEndpoint.transfer.call(this.inEndpoint, 32)
+      const frame = await this.inEndpoint.transfer(32)
       const arbitrationId = frame.readUInt32LE(4)
       const data = frame.slice(12, 12 + 8)
       this.emit('frame', {
@@ -90,7 +88,7 @@ class GsUsb extends EventEmitter {
     dataView.setUint8(0x11, data[5])
     dataView.setUint8(0x12, data[6])
     dataView.setUint8(0x13, data[7])
-    return this.outEndpoint.transfer.call(this.outEndpoint, Buffer.from(frame))
+    return this.outEndpoint.transfer(Buffer.from(frame))
   }
 
   getUsbDevice() {
