@@ -1,7 +1,7 @@
-const usb = require('usb')
-const util = require('util')
-const debug = require('debug')('node-gs_usb')
-const EventEmitter = require('events')
+const mode = (typeof window === 'undefined') ? 'node' : 'browser'
+const Buffer = mode === 'browser' ? require('./node_modules/buffer/index').Buffer : global.Buffer
+const EventEmitter = mode === 'browser' ? require('./node_modules/events/events') : require('events')
+const usb = mode === 'browser' ? navigator.usb : require('webusb').usb
 
 const GS_USB_BREQ_HOST_FORMAT = 0
 const GS_USB_BREQ_MODE = 2
@@ -24,43 +24,33 @@ class GsUsb extends EventEmitter {
   }
 
   setDeviceMode(mode, flags) {
-    debug('resetDevice')
-    const bmRequestType = USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
-    const bRequest = GS_USB_BREQ_MODE
-    const wValue = 0 // https://github.com/torvalds/linux/blob/master/drivers/net/can/usb/gs_usb.c#L255
-    const wIndex = this.device.interfaces[0].descriptor.bInterfaceNumber
     const data = Buffer.alloc(8)
     data.writeUInt32LE(mode, 0) // mode
     data.writeUInt32LE(flags, 4) // flags
-    return this.device.controlTransfer(
-      bmRequestType,
-      bRequest,
-      wValue,
-      wIndex,
-      data
-    )
+    return this.device.controlTransferOut({
+      requestType: 'vendor',
+      recipient: 'interface',
+      request: GS_USB_BREQ_MODE,
+      value: 0x00, // https://github.com/torvalds/linux/blob/master/drivers/net/can/usb/gs_usb.c#L255
+      index: this.device.configurations[0].interfaces[0].interfaceNumber
+    }, data)
   }
 
   sendHostConfig() {
-    debug('sendHostConfig')
-    const bmRequestType = USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_INTERFACE
-    const bRequest = GS_USB_BREQ_HOST_FORMAT
-    const wValue = 1 // https://github.com/torvalds/linux/blob/master/drivers/net/can/usb/gs_usb.c#L920
-    const wIndex = this.device.interfaces[0].descriptor.bInterfaceNumber
     const data = Buffer.alloc(4)
     data.writeUInt32LE(0xEFBE0000, 0)
-    return this.device.controlTransfer(
-      bmRequestType,
-      bRequest,
-      wValue,
-      wIndex,
-      data
-    )
+    return this.device.controlTransferOut({
+      requestType: 'vendor',
+      recipient: 'interface',
+      request: GS_USB_BREQ_HOST_FORMAT,
+      value: 0x01, // https://github.com/torvalds/linux/blob/master/drivers/net/can/usb/gs_usb.c#L920,
+      index: this.device.configurations[0].interfaces[0].interfaceNumber
+    }, data)
   }
 
   async recv() {
     for (;;) {
-      const frame = await this.inEndpoint.transfer(32)
+      const frame = await this.device.transferIn(this.inEndpoint.endpointNumber, 32)
       const arbitrationId = frame.readUInt32LE(4)
       const data = frame.slice(12, 12 + 8)
       const output = Buffer.alloc(12)
@@ -71,47 +61,47 @@ class GsUsb extends EventEmitter {
   }
 
   async sendCanFrame(arbitrationId, data) {
-    const frameLength = 0x14
-    const frame = new ArrayBuffer(frameLength)
-    const dataView = new DataView(frame)
-    dataView.setUint32(0x00, 0xFFFFFFFF, true) // echo_id
-    dataView.setUint32(0x04, arbitrationId, true) // can_id
-    dataView.setUint8(0x08, 0x08) // can_dlc
-    dataView.setUint8(0x09, 0x00) // channel
-    dataView.setUint8(0x0A, 0x00) // flags
-    dataView.setUint8(0x0B, 0x00) // reserved
-    dataView.setUint8(0x0C, data[0])
-    dataView.setUint8(0x0D, data[1])
-    dataView.setUint8(0x0E, data[2])
-    dataView.setUint8(0x0F, data[3])
-    dataView.setUint8(0x10, data[4])
-    dataView.setUint8(0x11, data[5])
-    dataView.setUint8(0x12, data[6])
-    dataView.setUint8(0x13, data[7])
-    return this.outEndpoint.transfer(Buffer.from(frame))
+    const frame = Buffer.alloc(0x14)
+    frame.writeUInt32LE(0xFFFFFFFF, 0x00) // echo_id
+    frame.writeUInt32LE(arbitrationId, 0x04) // can_id
+    frame.writeUInt8(0x08, 0x08) // can_dlc
+    frame.writeUInt8(0x00, 0x09) // channel
+    frame.writeUInt8(0x00, 0x0A) // flags
+    frame.writeUInt8(0x00, 0x0B) // reserved
+    frame.writeUInt8(data[0], 0x0C)
+    frame.writeUInt8(data[1], 0x0D)
+    frame.writeUInt8(data[2], 0x0E)
+    frame.writeUInt8(data[3], 0x0F)
+    frame.writeUInt8(data[4], 0x10)
+    frame.writeUInt8(data[5], 0x11)
+    frame.writeUInt8(data[6], 0x12)
+    frame.writeUInt8(data[7], 0x13)
+    return this.device.transferOut(this.outEndpoint.endpointNumber, frame)
   }
 
-  getUsbDevice() {
-    const deviceList = usb.getDeviceList()
-    const device = deviceList.find(device => {
-      return device.deviceDescriptor.idProduct === PRODUCT_ID &&
-        device.deviceDescriptor.idVendor === VENDOR_ID
+  async getUsbDevice() {
+    const device = await usb.requestDevice({
+      filters: [
+        {
+          vendorId: VENDOR_ID,
+          productId: PRODUCT_ID
+        }
+      ]
     })
-    if (!device) {
-      throw new Error('Device not found')
+    await device.open()
+    const [ configuration ] = device.configurations
+    if (device.configuration === null) {
+      await device.selectConfiguration(configuration.configurationValue)
     }
-    device.open()
-    device.interfaces[0].claim()
+    await device.claimInterface(configuration.interfaces[0].interfaceNumber)
+    await device.selectAlternateInterface(configuration.interfaces[0].interfaceNumber, 0)
     return device
   }
 
   async init() {
-    this.device = this.getUsbDevice()
-    this.inEndpoint = this.device.interfaces[0].endpoints.find(endpoint => endpoint.constructor.name === 'InEndpoint')
-    this.outEndpoint = this.device.interfaces[0].endpoints.find(endpoint => endpoint.constructor.name === 'OutEndpoint')
-    this.device.controlTransfer = util.promisify(this.device.controlTransfer)
-    this.inEndpoint.transfer = util.promisify(this.inEndpoint.transfer)
-    this.outEndpoint.transfer = util.promisify(this.outEndpoint.transfer)
+    this.device = await this.getUsbDevice()
+    this.inEndpoint = this.device.configuration.interfaces[0].alternates[0].endpoints.find(e => e.direction === 'in')
+    this.outEndpoint = this.device.configuration.interfaces[0].alternates[0].endpoints.find(e => e.direction === 'out')
     await this.setDeviceMode(GS_CAN_MODE_RESET, 0x00000000)
     await this.sendHostConfig()
     await this.setDeviceMode(GS_CAN_MODE_START, 0x00000000)
