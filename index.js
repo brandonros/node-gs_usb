@@ -50,8 +50,9 @@ class GsUsb extends EventEmitter {
 
   async recv() {
     for (;;) {
-      const frame = await this.device.transferIn(this.inEndpoint.endpointNumber, 32)
-      const arbitrationId = frame.readUInt32LE(4)
+      const transferInResult = await this.device.transferIn(this.inEndpoint.endpointNumber, this.inEndpoint.packetSize)
+      const frame = Buffer.from(transferInResult.data.buffer)
+      const arbitrationId = frame.readUInt32LE(4) & 0x1FFFFFFF
       const data = frame.slice(12, 12 + 8)
       const output = Buffer.alloc(12)
       output.writeUInt32LE(arbitrationId, 0)
@@ -63,7 +64,7 @@ class GsUsb extends EventEmitter {
   async sendCanFrame(arbitrationId, data) {
     const frame = Buffer.alloc(0x14)
     frame.writeUInt32LE(0xFFFFFFFF, 0x00) // echo_id
-    frame.writeUInt32LE(arbitrationId, 0x04) // can_id
+    frame.writeUInt32LE(arbitrationId > 0x7FF ? ((0x80000000 | arbitrationId) >>> 0) : arbitrationId, 0x04) // can_id
     frame.writeUInt8(0x08, 0x08) // can_dlc
     frame.writeUInt8(0x00, 0x09) // channel
     frame.writeUInt8(0x00, 0x0A) // flags
