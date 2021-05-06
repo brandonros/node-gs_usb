@@ -9,6 +9,9 @@ const GS_USB_BREQ_MODE = 2
 const GS_CAN_MODE_RESET = 0
 const GS_CAN_MODE_START = 1
 
+const GS_CAN_MODE_NORMAL = 0
+const GS_CAN_MODE_LISTEN_ONLY = 1
+
 const GS_CAN_MODE_PAD_PKTS_TO_MAX_PKT_SIZE = (1 << 7)
 
 const USB_DIR_OUT = 0
@@ -99,13 +102,16 @@ class GsUsb extends EventEmitter {
     return device
   }
 
-  async init() {
+  async init(options) {
+    if (!options) {
+      options = {}
+    }
     this.device = await this.getUsbDevice()
     this.inEndpoint = this.device.configuration.interfaces[0].alternates[0].endpoints.find(e => e.direction === 'in')
     this.outEndpoint = this.device.configuration.interfaces[0].alternates[0].endpoints.find(e => e.direction === 'out')
-    await this.setDeviceMode(GS_CAN_MODE_RESET, 0x00000000)
+    await this.setDeviceMode(GS_CAN_MODE_RESET, GS_CAN_MODE_NORMAL)
     await this.sendHostConfig()
-    await this.setDeviceMode(GS_CAN_MODE_START, 0x00000000)
+    await this.setDeviceMode(GS_CAN_MODE_START, options.mode === 'listenOnly' ? GS_CAN_MODE_LISTEN_ONLY : GS_CAN_MODE_NORMAL)
   }
 }
 
