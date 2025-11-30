@@ -1,7 +1,6 @@
-const mode = (typeof window === 'undefined') ? 'node' : 'browser'
-const Buffer = mode === 'browser' ? require('./node_modules/buffer/index').Buffer : global.Buffer
-const EventEmitter = mode === 'browser' ? require('./node_modules/events/events') : require('events')
-const usb = mode === 'browser' ? navigator.usb : require('usb').webusb
+import { Buffer } from 'buffer'
+import { EventEmitter } from 'events'
+import { webusb } from 'usb'
 
 const GS_USB_BREQ_HOST_FORMAT = 0
 const GS_USB_BREQ_MODE = 2
@@ -11,12 +10,6 @@ const GS_CAN_MODE_START = 1
 
 const GS_CAN_MODE_NORMAL = 0
 const GS_CAN_MODE_LISTEN_ONLY = 1
-
-const GS_CAN_MODE_PAD_PKTS_TO_MAX_PKT_SIZE = (1 << 7)
-
-const USB_DIR_OUT = 0
-const USB_TYPE_VENDOR = (0x02 << 5)
-const USB_RECIP_INTERFACE = 0x01
 
 const VENDOR_ID = 0x1D50
 const PRODUCT_ID = 0x606F
@@ -34,7 +27,7 @@ class GsUsb extends EventEmitter {
       requestType: 'vendor',
       recipient: 'interface',
       request: GS_USB_BREQ_MODE,
-      value: 0x00, // https://github.com/torvalds/linux/blob/master/drivers/net/can/usb/gs_usb.c#L255
+      value: 0x00,
       index: this.device.configurations[0].interfaces[0].interfaceNumber
     }, data)
   }
@@ -46,7 +39,7 @@ class GsUsb extends EventEmitter {
       requestType: 'vendor',
       recipient: 'interface',
       request: GS_USB_BREQ_HOST_FORMAT,
-      value: 0x01, // https://github.com/torvalds/linux/blob/master/drivers/net/can/usb/gs_usb.c#L920,
+      value: 0x01,
       index: this.device.configurations[0].interfaces[0].interfaceNumber
     }, data)
   }
@@ -56,7 +49,7 @@ class GsUsb extends EventEmitter {
       const transferInResult = await this.device.transferIn(this.inEndpoint.endpointNumber, this.inEndpoint.packetSize)
       const frame = Buffer.from(transferInResult.data.buffer)
       const arbitrationId = frame.readUInt32LE(4) & 0x1FFFFFFF
-      const data = frame.slice(12, 12 + 8)
+      const data = frame.subarray(12, 12 + 8)
       const output = Buffer.alloc(12)
       output.writeUInt32LE(arbitrationId, 0)
       data.copy(output, 4)
@@ -84,7 +77,7 @@ class GsUsb extends EventEmitter {
   }
 
   async getUsbDevice() {
-    const device = await usb.requestDevice({
+    const device = await webusb.requestDevice({
       filters: [
         {
           vendorId: VENDOR_ID,
@@ -93,7 +86,7 @@ class GsUsb extends EventEmitter {
       ]
     })
     await device.open()
-    const [ configuration ] = device.configurations
+    const [configuration] = device.configurations
     if (device.configuration === null) {
       await device.selectConfiguration(configuration.configurationValue)
     }
@@ -115,4 +108,4 @@ class GsUsb extends EventEmitter {
   }
 }
 
-module.exports = GsUsb
+export default GsUsb

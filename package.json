@@ -2,7 +2,9 @@
   "name": "gs_usb",
   "version": "1.0.0",
   "description": "node.js libusb support for CANtact/CANable/CANalyze devices",
+  "type": "module",
   "main": "index.js",
+  "exports": "./index.js",
   "dependencies": {
     "buffer": "^6.0.3",
     "events": "^3.3.0",
