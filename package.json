@@ -3,19 +3,6 @@
   "version": "1.0.0",
   "description": "node.js libusb support for CANtact/CANable/CANalyze devices",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/brandonros/node-gs_usb.git"
-  },
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/brandonros/node-gs_usb/issues"
-  },
-  "homepage": "https://github.com/brandonros/node-gs_usb#readme",
   "dependencies": {
     "buffer": "^6.0.3",
     "events": "^3.3.0",
