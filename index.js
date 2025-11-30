@@ -1,7 +1,7 @@
 const mode = (typeof window === 'undefined') ? 'node' : 'browser'
 const Buffer = mode === 'browser' ? require('./node_modules/buffer/index').Buffer : global.Buffer
 const EventEmitter = mode === 'browser' ? require('./node_modules/events/events') : require('events')
-const usb = mode === 'browser' ? navigator.usb : require('webusb').usb
+const usb = mode === 'browser' ? navigator.usb : require('usb').webusb
 
 const GS_USB_BREQ_HOST_FORMAT = 0
 const GS_USB_BREQ_MODE = 2

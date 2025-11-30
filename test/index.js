@@ -7,7 +7,7 @@ const run = async () => {
     console.log(frame)
   })
   setInterval(async () => {
-    await gsUsb.sendCanFrame(0x7E0, Buffer.from('0210035555555555', 'hex'))
+    await gsUsb.sendCanFrame(0x7a1, Buffer.from('0210035555555555', 'hex'))
   }, 1000)
   await gsUsb.recv()
 }
